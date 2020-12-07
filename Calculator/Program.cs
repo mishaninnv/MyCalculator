@@ -8,33 +8,24 @@ namespace Calculator
         {
             do
             {
-                Console.WriteLine("Введите выражение:");      
+                Console.WriteLine("Введите выражение:");
 
                 var expression = Console.ReadLine();
                 var result = 0.0;
 
-                if (!string.IsNullOrEmpty(expression))
+                try
                 {
-                    try
-                    {
-                        result = ExprLib.PolandRevertMath(expression);
-                    }
-                    catch (ArgumentException exception)
-                    {
-                        Console.WriteLine(exception.Message);
-                    }
+                    var resultRpn = ExprLib.PolandRevertMath(expression);
+                    var resultElement = ExprLib.CalculateExpression(resultRpn);
+                    result = resultElement.Operand;
                 }
-                else
+                catch (ArgumentException exception)
                 {
-                    Console.WriteLine("Ничего не введено");
+                    ShowResult(exception.Message);
+                    continue;
                 }
 
-                Console.WriteLine("********");
-                Console.WriteLine("Ответ: " + result);
-                Console.WriteLine("Нажмите Enter для продолжения.");
-                Console.WriteLine("Нажмите ESC для выхода.");
-                Console.WriteLine("********");
-
+                ShowResult("Ответ: " + Math.Round(result, 2));
             } while (IsContinue());
         }
 
@@ -52,6 +43,15 @@ namespace Calculator
                         return false;
                 }
             }
+        }
+
+        private static void ShowResult(string answer)
+        {
+            Console.WriteLine("********");
+            Console.WriteLine(answer);
+            Console.WriteLine("Нажмите Enter для продолжения.");
+            Console.WriteLine("Нажмите ESC для выхода.");
+            Console.WriteLine("********");
         }
     }
 }

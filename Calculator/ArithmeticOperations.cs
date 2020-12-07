@@ -29,19 +29,28 @@ namespace Calculator
         /// </returns>
         public static Element PerformOperation(Element operation, Element rightElement, Element leftElement)
         {
-            if (!Operations.ContainsKey(operation.Operation))
-            {
-                throw new ArgumentException("Недопустимый оператор: " + operation);
-            }
-
-            if (operation.Operation == EOperation.Div && Math.Abs(rightElement.Operand) < double.Epsilon)
-            {
-                throw new ArgumentException("Нельзя делить на ноль");
-            }
+            CheckOperationSupport(operation);
+            CheckDivisionByZero(operation, rightElement);
 
             var result = Operations[operation.Operation](leftElement.Operand, rightElement.Operand);
 
             return new Element {Type = EType.Operand, Operation = EOperation.None, Operand = result};
+        }
+
+        private static void CheckOperationSupport(Element operation)
+        {
+            if (!Operations.ContainsKey(operation.Operation))
+            {
+                throw new ArgumentException("Недопустимый оператор: " + operation);
+            }
+        }
+
+        private static void CheckDivisionByZero(Element operation, Element rightElement)
+        {
+            if (operation.Operation == EOperation.Div && Math.Abs(rightElement.Operand) < double.Epsilon)
+            {
+                throw new ArgumentException("Нельзя делить на ноль");
+            }
         }
     }
 }

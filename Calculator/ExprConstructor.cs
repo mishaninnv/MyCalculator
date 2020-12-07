@@ -22,149 +22,148 @@ namespace Calculator
                 {'/', 3}
             };
 
-        private static readonly List<char> AvailableSymbols = new List<char> {'-', '(', '+'};
+        private static readonly List<char> AvailableStartSymbols = new List<char> {'-', '(', '+'};
+
+        private static char _separator;
+        private static int _countParentheses;
+        private static char _lastElement;
+        private static List<Element> _resultRpn;
+        private static Stack<char> _stackOperations;
+        private static StringBuilder _intermediateValue;
 
         /// <summary>
         /// Collects operators and operands from characters of an expression entered by a user (Element).
         /// Writes the received elements to an array.
         /// </summary>
         /// <param name="exprText">Expression in the form of string.</param>
-        /// <exception cref="ArgumentException">Throw when expression contains invalid characters.</exception>
+        /// <exception cref="ArgumentException">Throws when expression contains invalid characters.</exception>
         /// <returns>
-        /// List consisting of Elements recorded by RPN.
+        /// IEnumerable<Element> consisting of Elements recorded by RPN.
         /// </returns>
         public static IEnumerable<Element> ExprToArr(string exprText)
         {
             ExpressionValidation(exprText);
 
-            var resultRpn = new List<Element>();
-            var stackOperations = new Stack<char>();
+            _separator = FormatToCulture();
+            exprText = _separator.Equals('.')
+                ? exprText.Replace(',', '.')
+                : exprText.Replace('.', ',');
 
-            var separator = FormatToCulture();
-            exprText = separator.Equals('.') ? exprText.Replace(',', '.') : exprText.Replace('.', ',');
-
-            var countParentheses = 0;
-            var intermediateValue = new StringBuilder();
-            var lastElement = '0';
+            _countParentheses = 0;
+            _intermediateValue = new StringBuilder();
+            _lastElement = '0';
+            _resultRpn = new List<Element>();
+            _stackOperations = new Stack<char>();
 
             foreach (var element in exprText.Where(element => element != ' '))
             {
-                if (OperandValues.Contains(element))
+                AddingElementInSpecificOrder(element);
+            }
+
+            CheckClosingParentheses();
+            CheckUnaccountedData();
+
+            return _resultRpn;
+        }
+
+        /// <summary>
+        /// Adds current element in stack or Intermediate Value.
+        /// </summary>
+        /// <param name="element">Current element in expression.</param>
+        /// <exception cref="ArgumentException">Thrown when the current and previous element cannot follow each other.
+        /// </exception>
+        private static void AddingElementInSpecificOrder(char element)
+        {
+            if (OperandValues.Contains(element))
+            {
+                if (element == _separator && !CheckForOperands(element, _separator, _intermediateValue))
                 {
-                    if (element == separator && !CheckForOperands(element, separator, intermediateValue))
+                    return;
+                }
+
+                _intermediateValue.Append(element);
+                if (_lastElement != ')')
+                {
+                    _lastElement = element;
+                }
+            }
+            else if (OperatorValues.ContainsKey(element))
+            {
+                if (_intermediateValue.Length != 0)
+                {
+                    if (_lastElement == ')')
                     {
-                        continue;
+                        RewriteExpr('*', _stackOperations, _resultRpn);
                     }
 
-                    intermediateValue.Append(element);
-                    if (lastElement != ')')
+                    var newElement = GetElement(EType.Operand, _intermediateValue.GetDouble());
+                    _resultRpn.Add(newElement);
+                    _intermediateValue.Clear();
+
+                    if (element == '(')
                     {
-                        lastElement = element;
+                        RewriteExpr('*', _stackOperations, _resultRpn);
+                        _lastElement = '*';
                     }
                 }
-                else if (OperatorValues.ContainsKey(element))
+
+                if (element == '(' || element == ')')
                 {
-                    if (intermediateValue.Length != 0)
+                    _countParentheses += CheckAsParentheses(element, _countParentheses);
+                }
+
+                // If before the operator have another operator.
+                if (_resultRpn.Count != 0 && OperatorValues.ContainsKey(_lastElement))
+                {
+                    switch (_lastElement)
                     {
-                        if (lastElement == ')')
-                        {
-                            RewriteExpr('*', stackOperations, resultRpn);
-                        }
-
-                        var newElement = GetElement(EType.Operand, intermediateValue.GetDouble());
-                        resultRpn.Add(newElement);
-                        intermediateValue.Clear();
-
-                        if (element == '(')
-                        {
-                            RewriteExpr('*', stackOperations, resultRpn);
-                            lastElement = '*';
-                        }
-                    }
-
-                    if (element == '(' || element == ')')
-                    {
-                        countParentheses += CheckAsParentheses(element, countParentheses);
-                    }
-
-                    // If before the operator have another operator.
-                    if (resultRpn.Count != 0)
-                    {
-                        if (OperatorValues.ContainsKey(lastElement))
-                        {
-                            switch (lastElement)
+                        case '/':
+                        case '*':
+                        case '+':
+                        case '-':
+                            if (element != '(')
                             {
-                                case '/':
-                                case '*':
-                                case '+':
-                                case '-':
-                                    if (element != '(')
-                                    {
-                                        throw new ArgumentException("Недопустимый ввод: " + lastElement + element);
-                                    }
-
-                                    break;
-                                case '(':
-                                    switch (element)
-                                    {
-                                        case '(':
-                                            RewriteExpr('(', stackOperations, resultRpn);
-                                            lastElement = '(';
-                                            continue;
-                                        case '-':
-                                            intermediateValue.Append(element);
-                                            continue;
-                                        default:
-                                            throw new ArgumentException("Недопустимый ввод: (" + element);
-                                    }
-                                case ')':
-                                    if (element == '(')
-                                    {
-                                        RewriteExpr('*', stackOperations, resultRpn);
-                                        RewriteExpr('(', stackOperations, resultRpn);
-                                        lastElement = '(';
-                                    }
-                                    else
-                                    {
-                                        RewriteExpr(element, stackOperations, resultRpn);
-                                        lastElement = element;
-                                    }
-
-                                    continue;
+                                throw new ArgumentException("Недопустимый ввод: " + _lastElement + element);
                             }
-                        }
+
+                            break;
+                        case '(':
+                            switch (element)
+                            {
+                                case '(':
+                                    RewriteExpr('(', _stackOperations, _resultRpn);
+                                    _lastElement = '(';
+                                    return;
+                                case '-':
+                                    _intermediateValue.Append(element);
+                                    return;
+                                default:
+                                    throw new ArgumentException("Недопустимый ввод: (" + element);
+                            }
+                        case ')':
+                            if (element == '(')
+                            {
+                                RewriteExpr('*', _stackOperations, _resultRpn);
+                                RewriteExpr('(', _stackOperations, _resultRpn);
+                                _lastElement = '(';
+                            }
+                            else
+                            {
+                                RewriteExpr(element, _stackOperations, _resultRpn);
+                                _lastElement = element;
+                            }
+
+                            return;
                     }
-
-                    RewriteExpr(element, stackOperations, resultRpn);
-                    lastElement = element;
-                }
-                else
-                {
-                    throw new ArgumentException("Неопознанный символ: " + element);
-                }
-            }
-
-            if (countParentheses != 0)
-            {
-                throw new ArgumentException("Закрыты не все скобки");
-            }
-
-            if (intermediateValue.Length != 0)
-            {
-                if (lastElement == ')')
-                {
-                    RewriteExpr('*', stackOperations, resultRpn);
                 }
 
-                resultRpn.Add(GetElement(EType.Operand, intermediateValue.GetDouble()));
+                RewriteExpr(element, _stackOperations, _resultRpn);
+                _lastElement = element;
             }
-
-            for (var i = 0; i < stackOperations.Count; i++)
+            else
             {
-                resultRpn.Add(GetElement(EType.Operator, 0.0, stackOperations.Pop()));
+                throw new ArgumentException("Неопознанный символ: " + element);
             }
-
-            return resultRpn;
         }
 
         /// <summary>
@@ -218,6 +217,27 @@ namespace Calculator
         }
 
         /// <summary>
+        /// Сhecks for unused data written on the stack and intermediate value. Аnd processes them.
+        /// </summary>
+        private static void CheckUnaccountedData()
+        {
+            if (_intermediateValue.Length != 0)
+            {
+                if (_lastElement == ')')
+                {
+                    RewriteExpr('*', _stackOperations, _resultRpn);
+                }
+
+                _resultRpn.Add(GetElement(EType.Operand, _intermediateValue.GetDouble()));
+            }
+
+            while (_stackOperations.Count > 0)
+            {
+                _resultRpn.Add(GetElement(EType.Operator, 0.0, _stackOperations.Pop()));
+            }
+        }
+
+        /// <summary>
         /// Return a separator according to user system parameters.
         /// </summary>
         /// <returns>Separator for expression.</returns>
@@ -267,7 +287,7 @@ namespace Calculator
                 throw new ArgumentException("Недопустимый символ в конце выражения: " + exprText[^1]);
             }
 
-            if (!AvailableSymbols.Contains(exprText[0]) && !OperandValues.Contains(exprText[0]))
+            if (!AvailableStartSymbols.Contains(exprText[0]) && !OperandValues.Contains(exprText[0]))
             {
                 throw new ArgumentException("Недопустимый символ вначале выражения");
             }
@@ -331,6 +351,19 @@ namespace Calculator
             }
 
             return 0;
+        }
+
+        /// <summary>
+        /// Checks the closing of parentheses.
+        /// </summary>
+        /// <exception cref="ArgumentException">Thrown when the number of open and closed parentheses is different.
+        /// </exception>
+        private static void CheckClosingParentheses()
+        {
+            if (_countParentheses != 0)
+            {
+                throw new ArgumentException("Закрыты не все скобки");
+            }
         }
 
         /// <summary>

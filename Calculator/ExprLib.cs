@@ -11,9 +11,9 @@ namespace Calculator
         /// <param name="inputExpression">User incoming expression.</param>
         /// <exception cref="ArgumentException">Throw when input expression is empty.</exception>
         /// <returns>
-        /// Computed expression value.
+        /// Returns IEnumerable<Element> in Reverse Polish Notation.
         /// </returns>
-        public static double PolandRevertMath(string inputExpression)
+        public static IEnumerable<Element> PolandRevertMath(string inputExpression)
         {
             if (string.IsNullOrEmpty(inputExpression))
             {
@@ -21,8 +21,8 @@ namespace Calculator
             }
 
             var expression = ExprConstructor.ExprToArr(inputExpression);
-            var result = CalculateExpression(expression);
-            return result.Operand;
+
+            return expression;
         }
 
         /// <summary>
@@ -31,19 +31,18 @@ namespace Calculator
         /// </summary>
         /// <param name="exprRpn">Expression written for calculation according to the algorithm.</param>
         /// <returns>
-        /// Return calculate element.
+        /// Return calculate Element.
         /// </returns>
-        private static Element CalculateExpression(IEnumerable<Element> exprRpn)
+        public static Element CalculateExpression(IEnumerable<Element> exprRpn)
         {
             var stack = new Stack<Element>();
-            var operandDefault = new Element { Type = EType.Operand, Operation = EOperation.None, Operand = 0.0 };
 
             foreach (var element in exprRpn)
             {
                 if (element.Type == EType.Operator)
                 {
                     var rightOperand = stack.Pop();
-                    var leftOperand = stack.Count > 0 ? stack.Pop() : operandDefault;
+                    var leftOperand = stack.Count > 0 ? stack.Pop() : GetEmptyElement();
                     var result = ArithmeticOperations.PerformOperation(element, rightOperand, leftOperand);
 
                     stack.Push(result);
@@ -55,8 +54,17 @@ namespace Calculator
             }
             return stack.Pop();
         }
-    }
 
+        /// <summary>
+        /// Creates a new Element with Type = Operand, Operation = None, Operand = 0.0 (Empty element).
+        /// </summary>
+        /// <returns>Empty element.</returns>
+        private static Element GetEmptyElement()
+        {
+            return new Element { Type = EType.Operand, Operation = EOperation.None, Operand = 0.0 };
+        }
+    }
+    
     internal struct Element
     {
         public EType Type;
