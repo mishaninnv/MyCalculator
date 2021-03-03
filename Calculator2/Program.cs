@@ -1,23 +1,23 @@
 ﻿using System;
 
-namespace Calculator
+namespace Calculator2
 {
-    internal static class Program
+    class Program
     {
-        private static void Main(string[] args)
+        static void Main(string[] args)
         {
             do
             {
                 Console.WriteLine("Введите выражение:");
 
                 var expression = Console.ReadLine();
-                var result = 0.0;
+                var result = "0.0";
 
                 try
                 {
-                    var resultRpn = ExprLib.PolandRevertMath(expression);
-                    var resultElement = ExprLib.CalculateExpression(resultRpn);
-                    result = resultElement.Operand;
+                    var expressionHandler = new ExpressionHandler(expression);
+                    var algorithmRpn = new AlgorithmRPN(expressionHandler);
+                    result = algorithmRpn.Result;
                 }
                 catch (ArgumentException exception)
                 {
@@ -25,10 +25,10 @@ namespace Calculator
                     continue;
                 }
 
-                ShowResult("Ответ: " + Math.Round(result, 2));
+                ShowResult("Ответ: " + Math.Round(double.Parse(result), 2));
             } while (IsContinue());
         }
-
+        
         private static bool IsContinue()
         {
             while (true)
